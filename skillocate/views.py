@@ -47,16 +47,7 @@ def assign_user_project(username, id):
 
 @app.route('/api/v1/customer', methods=['POST'])
 def create_customer():
-    name = request.json['name']
-    city = request.json['city']
-
-    customer = Customer(name, city)
-    graph.create(customer)
-    
-    if not customer:
-        raise InvalidUsage('Customer already exists', status_code=409)
-    else:
-        return jsonify(data=customer)
+    return jsonify(data=customerService.create(request))
 
 @app.route('/api/v1/customer/<id>', methods=['GET'])
 def get_customer(id):

@@ -7,7 +7,7 @@ url = os.environ.get('GRAPHENEDB_BOLT_URL')
 username = os.environ.get('GRAPHENEDB_BOLT_USER')
 password = os.environ.get('GRAPHENEDB_BOLT_PASSWORD')
 
-graph = Graph(url, username=username, password=password, bolt = True)
+graph = Graph(url, username=username, password=password, bolt = True, secure = True, http_port = 24789, https_port = 24780)
 
 class UserService:
     def get(self, username):
@@ -57,6 +57,15 @@ class CustomerService:
     def get_all(self):
         return {"customers" : [self.serialize(customer) for customer in Customer.select(graph)]}
 
+    def create(self, request):
+        name = request.json['name']
+        city = request.json['city']
+
+        customer = Customer(name, city)
+        graph.create(customer)
+        
+        return {"customer" : self.serialize(customer)}
+     
     def serialize(self, customer):
         tags = [tag.__ogm__.node.properties for tags in customer.tags]
         projects = [{"project" : serialize_simple(project)} for project in customer.projects]
