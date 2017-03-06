@@ -6,9 +6,6 @@ import os
 url = os.environ.get('GRAPHENEDB_BOLT_URL')
 username = os.environ.get('GRAPHENEDB_BOLT_USER')
 password = os.environ.get('GRAPHENEDB_BOLT_PASSWORD')
-print(url)
-print(username)
-print(password)
 
 graph = Graph(url, username=username, password=password, bolt = True)
 
