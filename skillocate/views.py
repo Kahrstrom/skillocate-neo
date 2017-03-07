@@ -11,6 +11,10 @@ customerService = CustomerService()
 projectService = ProjectService()
 userService = UserService()
 
+@app.route('/api/v1/hello')
+def hello():
+    return jsonify(data='success')
+
 @app.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
     response = jsonify(error.to_dict())
