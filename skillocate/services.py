@@ -1,13 +1,15 @@
 from .models import User, Project, Customer, Tag
-from py2neo import Graph
+from py2neo import Graph, authenticate
 from passlib.hash import bcrypt
 import os
 
 url = os.environ.get('GRAPHENEDB_BOLT_URL')
 username = os.environ.get('GRAPHENEDB_BOLT_USER')
 password = os.environ.get('GRAPHENEDB_BOLT_PASSWORD')
+http_url = os.environ.get('GRAPHENEDB_URL')
 
-graph = Graph(url, username=username, password=password, bolt = True, secure = True, http_port = 24789, https_port = 24780)
+graph = Graph(http_url, username=username, password=password, bolt = False)
+#graph = Graph(url, username=username, password=password, bolt = True, secure = True, http_port = 24789, https_port = 24780)
 
 class UserService:
     def get(self, username):
