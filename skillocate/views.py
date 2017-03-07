@@ -13,6 +13,9 @@ userService = UserService()
 
 @app.route('/api/v1/hello')
 def hello():
+    result = graph.run("MATCH (n:Customer) WHERE ID(n) = 1 RETURN n")
+    for record in result:
+        print(record)
     return jsonify(data='success')
 
 @app.errorhandler(InvalidUsage)
