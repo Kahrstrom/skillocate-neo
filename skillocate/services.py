@@ -50,9 +50,9 @@ class CustomerService:
     
     def get(self, id):
         query = ("MATCH (c:Customer) "
-                 "MATCH (t:Tag) - [:TAGGED] -> (c) "
+                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (c) "
                  "WHERE ID(c) = {0} "
-                 "RETURN c, ID(c) AS id, t AS tags").format(id)
+                 "RETURN c, ID(c) AS id, collect(t) AS tags").format(id)
         customer = graph.data(query)
         print(customer)
         if not customer:
@@ -62,18 +62,15 @@ class CustomerService:
     
     def get_all(self):
         query = ("MATCH (c:Customer)"
-                "MATCH (t:Tag) - [:TAGGED] -> (c)"
-                "RETURN c, ID(c) AS id, t AS tags")
-        result = graph.data(query)
+                "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (c)"
+                "RETURN c, ID(c) AS id, collect(t) AS tags")
+        customers = graph.data(query)
 
-        return {"customers" : [self.serialize(customer) for customer in result]}
+        return {"customers" : [self.serialize(customer) for customer in customers]}
 
     def create(self, request):
-        # TODO: FIXA VALUES-SKITEN
-        values = ["{0} : '{1}'".format(key, request.json[key]) for key in request.json]
-        values = "{" + ", ".join(values) + "}"
         query = ("CREATE (c:Customer {0}) "
-                 "RETURN c, ID(c) AS id").format(values)
+                 "RETURN c, ID(c) AS id").format(parse_request(request))
         customer = graph.data(query)
         return {"customer" : self.serialize(customer[0])}
      
@@ -84,45 +81,40 @@ class CustomerService:
         )
         data = merge_two_dicts(
             data,
-            {"tags" : customer['tags'] if 'tags' in customer else []}
+            {"tags" : customer['tags'] if ('tags' in customer and customer['tags']) else []}
         )
-        # data = merge_two_dicts(
-        #     data,
-        #     {"projects" : projects}
-        # )
+        data = merge_two_dicts(
+            data,
+            {"projects" : customer['projects'] if ('projects' in customer and customer['projects']) else []}
+        )
         return data
 
 class ProjectService:
     def get(self, id):
-        project = Project.select(graph, int(id)).first()
+        query = ("MATCH (p:Project) "
+                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (p) "
+                 "WHERE ID(p) = {0} "
+                 "RETURN p, ID(p) AS id, collect(t) AS tags").format(id)
+        project = graph.data(query)
         print(project)
         if not project:
             return None
         else:
-            return self.serialize(project)
+            return {"project" : self.serialize(project[0])}
     
     def get_all(self):
-        return {"projects" : [self.serialize(project) for project in Project.select(graph)]}
+        query = ("MATCH (p:Project)"
+                "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (p)"
+                "RETURN p, ID(p) AS id, collect(t) AS tags")
+        projects = graph.data(query)
+
+        return {"projects" : [self.serialize(project) for project in projects]}
 
     def create(self, request):
-        title = request.json['title']
-        status = request.json['status']
-        startdate = request.json['startdate']
-        enddate = request.json['enddate']
-        hours = request.json['hours']
-        customer_id = int(request.json['customer'])
-        tags = [tag['name'] for tag in request.json['tags']]
-
-        project = Project(title, status, startdate, enddate, hours)
-        customer = Customer.select(graph, customer_id).first()
-        project.customer.add(customer)
-        for name in tags:
-            tag = Tag(name)
-            project.tags.add(tag)
-
-        graph.create(project)
-
-        return {"project" : self.serialize(project)}
+        query = ("CREATE (p:Project {0}) "
+                 "RETURN p, ID(p) AS id").format(parse_request(request))
+        project = graph.data(query)
+        return {"project" : self.serialize(project[0])}
     
     def add_tags(self, id, request):
         project = Project.select(graph, int(id)).first()
@@ -138,22 +130,24 @@ class ProjectService:
         return {"project" : self.serialize(project)}
     
     def serialize(self, project):
-        tags = [tag.__ogm__.node.properties for tag in project.tags]
-        customers = [serialize_simple(customer) for customer in project.customer]
         data = merge_two_dicts(
-            project.__ogm__.node.properties,
-            {"tags" : tags}
+            project['p'],
+            {"id": project['id']}
         )
         data = merge_two_dicts(
             data,
-            {"customer" : customers[0]}
+            {"tags" : project['tags'] if ('tags' in project and project['tags']) else []}
         )
         data = merge_two_dicts(
             data,
-            {"id": project.__primaryvalue__}
+            {"customers" : project['customers'] if ('projects' in project and project['projects']) else []}
         )
         return data
-    
+
+def parse_request(request):
+    values = ["{0} : '{1}'".format(key, request.json[key]) for key in request.json]
+    return "{" + ", ".join(values) + "}"
+
 def serialize_simple(item):
     data = merge_two_dicts(
         item.__ogm__.node.properties,
