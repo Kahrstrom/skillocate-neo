@@ -52,7 +52,7 @@ class CustomerService:
         query = ("MATCH (c:Customer) "
                  "MATCH (t:Tag) - [:TAGGED] -> (c) "
                  "WHERE ID(c) = {0} "
-                 "RETURN c, ID(c) as id, t AS tags").format(id)
+                 "RETURN c, ID(c) AS id, t AS tags").format(id)
         customer = graph.data(query)
         print(customer)
         if not customer:
@@ -69,13 +69,13 @@ class CustomerService:
         return {"customers" : [self.serialize(customer) for customer in result]}
 
     def create(self, request):
-        name = request.json['name']
-        city = request.json['city']
-
-        customer = Customer(name, city)
-        graph.create(customer)
-        
-        return {"customer" : self.serialize(customer)}
+        # TODO: FIXA VALUES-SKITEN
+        values = ["{0} : '{1}'".format(key, request.json[key]) for key in request.json]
+        values = "{" + ", ".join(values) + "}"
+        query = ("CREATE (c:Customer {0}) "
+                 "RETURN c, ID(c) AS id").format(values)
+        customer = graph.data(query)
+        return {"customer" : self.serialize(customer[0])}
      
     def serialize(self, customer):
         data = merge_two_dicts(
@@ -84,7 +84,7 @@ class CustomerService:
         )
         data = merge_two_dicts(
             data,
-            {"tags" : customer['tags']}
+            {"tags" : customer['tags'] if 'tags' in customer else []}
         )
         # data = merge_two_dicts(
         #     data,
