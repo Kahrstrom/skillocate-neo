@@ -57,7 +57,12 @@ class CustomerService:
             return {"customer" : self.serialize(customer)}
     
     def get_all(self):
-        return {"customers" : [self.serialize(customer) for customer in Customer.select(graph)]}
+        query = ("MATCH (c:Customer)"
+                "MATCH (n) - [t:TAGGED] -> (c)"
+                "RETURN c, ID(c) AS id, n AS tags")
+        result = graph.data(query)
+
+        return {"customers" : [self.serialize(customer) for customer in result]}
 
     def create(self, request):
         name = request.json['name']
@@ -69,21 +74,18 @@ class CustomerService:
         return {"customer" : self.serialize(customer)}
      
     def serialize(self, customer):
-        tags = [tag.__ogm__.node.properties for tags in customer.tags]
-        projects = [{"project" : serialize_simple(project)} for project in customer.projects]
-        
         data = merge_two_dicts(
-            customer.__ogm__.node.properties,
-            {"id": customer.__primaryvalue__}
+            customer['c'],
+            {"id": customer['id']}
         )
         data = merge_two_dicts(
             data,
-            {"tags" : tags}
+            {"tags" : customer['tags']}
         )
-        data = merge_two_dicts(
-            data,
-            {"projects" : projects}
-        )
+        # data = merge_two_dicts(
+        #     data,
+        #     {"projects" : projects}
+        # )
         return data
 
 class ProjectService:
