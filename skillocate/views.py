@@ -83,3 +83,7 @@ def get_project(id):
 @app.route('/api/v1/project/<id>/tag', methods=['POST'])
 def tag_project(id):
     return jsonify(data=projectService.add_tags(id=id, request=request))
+
+@app.route('/api/v1/customer/<id>/tag', methods=['POST'])
+def tag_customer(id):
+    return jsonify(data=customerService.add_tags(id=id, request=request))

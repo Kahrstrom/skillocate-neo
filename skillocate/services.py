@@ -73,7 +73,27 @@ class CustomerService:
                  "RETURN c, ID(c) AS id").format(parse_request(request))
         customer = graph.data(query)
         return {"customer" : self.serialize(customer[0])}
-     
+
+    def add_tags(self, id, request):
+        query = """MATCH (c:Customer)
+                   WHERE ID(c) = {0}
+                   WITH c\n""".format(id)
+        
+
+        merges = ["""MERGE (t{0}:Tag {1})
+                     MERGE (t{0}) - [:TAGGED] -> (c)""".format(index, "{name:'" + tag['name'] + "'}") for index, tag in enumerate(request.json['tags'])]
+        merges = "\n".join(merges)
+
+        query = """
+                {0}
+                {1}
+                WITH c
+                OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (c)
+                RETURN c, ID(c) AS id, collect(t) AS tags
+                """.format(query, merges)
+        customer = graph.data(query)
+        return {"customer" : self.serialize(customer[0])}
+
     def serialize(self, customer):
         data = merge_two_dicts(
             customer['c'],
@@ -104,8 +124,8 @@ class ProjectService:
     
     def get_all(self):
         query = ("MATCH (p:Project)"
-                "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (p)"
-                "RETURN p, ID(p) AS id, collect(t) AS tags")
+                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (p)"
+                 "RETURN p, ID(p) AS id, collect(t) AS tags")
         projects = graph.data(query)
 
         return {"projects" : [self.serialize(project) for project in projects]}
@@ -117,9 +137,13 @@ class ProjectService:
         return {"project" : self.serialize(project[0])}
     
     def add_tags(self, id, request):
-        project = Project.select(graph, int(id)).first()
+        query = ("MATCH (p:Project) "
+                 "WHERE ID(p) = {0}"
+                 "WITH p").format(id)
+        
 
-        tags = [tag['name'] for tag in request.json['tags']]
+        merges = [("MERGE (t:Tag {0})"
+                   "MERGE t - [:TAGGED] -> c ").format("{name:'" + tag['name'] + "'}") for tag in request.json['tags']]
 
         for name in tags:
             tag = Tag(name)
