@@ -49,17 +49,21 @@ class UserService:
 class CustomerService:
     
     def get(self, id):
-        customer = Customer.select(graph, primary_value = int(id)).first()
-        
+        query = ("MATCH (c:Customer) "
+                 "MATCH (t:Tag) - [:TAGGED] -> (c) "
+                 "WHERE ID(c) = {0} "
+                 "RETURN c, ID(c) as id, t AS tags").format(id)
+        customer = graph.data(query)
+        print(customer)
         if not customer:
             return None
         else:
-            return {"customer" : self.serialize(customer)}
+            return {"customer" : self.serialize(customer[0])}
     
     def get_all(self):
         query = ("MATCH (c:Customer)"
-                "MATCH (n) - [t:TAGGED] -> (c)"
-                "RETURN c, ID(c) AS id, n AS tags")
+                "MATCH (t:Tag) - [:TAGGED] -> (c)"
+                "RETURN c, ID(c) AS id, t AS tags")
         result = graph.data(query)
 
         return {"customers" : [self.serialize(customer) for customer in result]}
