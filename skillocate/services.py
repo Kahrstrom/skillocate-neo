@@ -18,7 +18,7 @@ class UserService:
         if not user:
             return None
         else:
-            return {"user" : self.serialize(user)}
+            return {"user" : serialize(user)}
     
     def get_projects(self, username):
         user = User.select(graph, primary_value = username).first()
@@ -49,101 +49,87 @@ class UserService:
 class CustomerService:
     
     def get(self, id):
-        query = ("MATCH (c:Customer) "
-                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (c) "
-                 "WHERE ID(c) = {0} "
-                 "RETURN c, ID(c) AS id, collect(t) AS tags").format(id)
+        query = ("MATCH (n:Customer) "
+                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n) "
+                 "WHERE ID(n) = {0} "
+                 "RETURN n, ID(n) AS id, collect(t) AS tags").format(id)
         customer = graph.data(query)
         print(customer)
         if not customer:
             return None
         else:
-            return {"customer" : self.serialize(customer[0])}
+            return {"customer" : serialize(customer[0], ['tags', 'projects'])}
     
     def get_all(self):
-        query = ("MATCH (c:Customer)"
-                "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (c)"
-                "RETURN c, ID(c) AS id, collect(t) AS tags")
+        query = ("MATCH (n:Customer)"
+                "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)"
+                "RETURN n, ID(n) AS id, collect(t) AS tags")
         customers = graph.data(query)
 
-        return {"customers" : [self.serialize(customer) for customer in customers]}
+        return {"customers" : [serialize(customer, ['tags', 'projects']) for customer in customers]}
 
     def create(self, request):
-        query = ("CREATE (c:Customer {0}) "
-                 "RETURN c, ID(c) AS id").format(parse_request(request))
+        query = ("CREATE (n:Customer {0}) "
+                 "RETURN n, ID(n) AS id").format(parse_request(request))
         customer = graph.data(query)
-        return {"customer" : self.serialize(customer[0])}
+        return {"customer" : serialize(customer[0], ['tags', 'projects'])}
 
     def add_tags(self, id, request):
-        query = """MATCH (c:Customer)
-                   WHERE ID(c) = {0}
-                   WITH c\n""".format(id)
+        query = """MATCH (n:Customer)
+                   WHERE ID(n) = {0}
+                   WITH n\n""".format(id)
         
 
         merges = ["""MERGE (t{0}:Tag {1})
-                     MERGE (t{0}) - [:TAGGED] -> (c)""".format(index, "{name:'" + tag['name'] + "'}") for index, tag in enumerate(request.json['tags'])]
+                     MERGE (t{0}) - [:TAGGED] -> (n)""".format(index, "{name:'" + tag['name'] + "'}") for index, tag in enumerate(request.json['tags'])]
         merges = "\n".join(merges)
 
         query = """
                 {0}
                 {1}
-                WITH c
-                OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (c)
-                RETURN c, ID(c) AS id, collect(t) AS tags
+                WITH n
+                OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                RETURN n, ID(n) AS id, collect(t) AS tags
                 """.format(query, merges)
-        customer = graph.data(query)
-        return {"customer" : self.serialize(customer[0])}
 
-    def serialize(self, customer):
-        data = merge_two_dicts(
-            customer['c'],
-            {"id": customer['id']}
-        )
-        data = merge_two_dicts(
-            data,
-            {"tags" : customer['tags'] if ('tags' in customer and customer['tags']) else []}
-        )
-        data = merge_two_dicts(
-            data,
-            {"projects" : customer['projects'] if ('projects' in customer and customer['projects']) else []}
-        )
-        return data
+        customer = graph.data(query)
+        return {"customer" : serialize(customer[0], ['tags', 'projects'])}
 
 class ProjectService:
     def get(self, id):
-        query = ("MATCH (p:Project) "
-                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (p) "
-                 "WHERE ID(p) = {0} "
-                 "RETURN p, ID(p) AS id, collect(t) AS tags").format(id)
+        query = ("MATCH (n:Project) "
+                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n) "
+                 "WHERE ID(n) = {0} "
+                 "RETURN n, ID(n) AS id, collect(t) AS tags").format(id)
         project = graph.data(query)
         print(project)
         if not project:
             return None
         else:
-            return {"project" : self.serialize(project[0])}
+            return {"project" : serialize(project[0], ['tags','customers'])}
     
     def get_all(self):
-        query = ("MATCH (p:Project)"
-                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (p)"
-                 "RETURN p, ID(p) AS id, collect(t) AS tags")
+        query = ("MATCH (n:Project)"
+                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)"
+                 "RETURN n, ID(n) AS id, collect(t) AS tags")
         projects = graph.data(query)
 
-        return {"projects" : [self.serialize(project) for project in projects]}
+        return {"projects" : [serialize(project, ['tags','customers']) for project in projects]}
 
     def create(self, request):
-        query = ("CREATE (p:Project {0}) "
-                 "RETURN p, ID(p) AS id").format(parse_request(request))
+        query = ("CREATE (n:Project {0}) "
+                 "RETURN n, ID(n) AS id").format(parse_request(request))
         project = graph.data(query)
-        return {"project" : self.serialize(project[0])}
+        return {"project" : serialize(project[0], ['tags','customers'])}
     
     def add_tags(self, id, request):
-        query = ("MATCH (p:Project) "
-                 "WHERE ID(p) = {0}"
-                 "WITH p").format(id)
+        query = ("MATCH (n:Project) "
+                 "WHERE ID(n) = {0}"
+                 "WITH n").format(id)
         
 
         merges = [("MERGE (t:Tag {0})"
-                   "MERGE t - [:TAGGED] -> c ").format("{name:'" + tag['name'] + "'}") for tag in request.json['tags']]
+                   "MERGE t - [:TAGGED] -> n ").format("{name:'" + tag['name'] + "'}") for tag in request.json['tags']]
 
         for name in tags:
             tag = Tag(name)
@@ -151,22 +137,29 @@ class ProjectService:
         
         graph.push(project)
 
-        return {"project" : self.serialize(project)}
-    
-    def serialize(self, project):
-        data = merge_two_dicts(
-            project['p'],
-            {"id": project['id']}
-        )
-        data = merge_two_dicts(
-            data,
-            {"tags" : project['tags'] if ('tags' in project and project['tags']) else []}
-        )
-        data = merge_two_dicts(
-            data,
-            {"customers" : project['customers'] if ('projects' in project and project['projects']) else []}
-        )
-        return data
+        return {"project" : serialize(project, ['tags','customers'])}
+
+
+def add_tags_to_label(id, label, tags, serialize):
+        query = """MATCH (n:{0})
+                   WHERE ID(n) = {1}
+                   WITH n\n""".format(label, id)
+        
+
+        merges = ["""MERGE (t{0}:Tag {1})
+                     MERGE (t{0}) - [:TAGGED] -> (n)""".format(index, "{name:'" + tag['name'] + "'}") for index, tag in enumerate(tags)]
+        merges = "\n".join(merges)
+
+        query = """
+                {0}
+                {1}
+                WITH n
+                OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                RETURN n, ID(n) AS id, collect(t) AS tags
+                """.format(query, merges)
+
+        node = graph.data(query)
+        return {"{0}".format(label).lower() : serialize(node[0])}
 
 def parse_request(request):
     values = ["{0} : '{1}'".format(key, request.json[key]) for key in request.json]
@@ -181,6 +174,18 @@ def serialize_simple(item):
         data,
         {"id": item.__primaryvalue__}
     )
+
+def serialize(node, relations):
+        data = merge_two_dicts(
+            node['n'],
+            {"id": node['id']}
+        )
+        for relation in relations:
+            data = merge_two_dicts(
+                data,
+                {relation : node[relation] if (relation in node and node[relation]) else []}
+            )
+        return data
 
 def merge_two_dicts(x, y):
     """Given two dicts, merge them into a new dict as a shallow copy."""
