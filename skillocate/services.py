@@ -68,8 +68,8 @@ class CustomerService:
 
         return {"customers" : [serialize(customer, ['tags', 'projects']) for customer in customers]}
 
-    def create_project(self, id, request)
-
+    def create_project(self, id, request):
+        return {"project" : ""}
 
     def create(self, request):
         query = """CREATE (n:Customer {0})
