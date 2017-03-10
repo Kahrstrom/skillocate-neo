@@ -13,10 +13,7 @@ userService = UserService()
 
 @app.route('/api/v1/hello')
 def hello():
-    result = graph.data("MATCH (n:Customer) RETURN n, ID(n) AS id")
-    for record in result:
-        print(record)
-    return jsonify(data=result)
+    return jsonify(data="world")
 
 @app.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
@@ -39,7 +36,7 @@ def login_user():
     else:
         raise InvalidUsage('Invalid password', status_code=401)
 
-@app.route('/api/v1/user/<username>/projects', methods=['GET'])
+@app.route('/api/v1/user/<username>/project/all', methods=['GET'])
 def get_user_projects(username):
     projects = userService.get_projects(username)
 
@@ -64,7 +61,7 @@ def get_customer(id):
     else:
         return jsonify(data=customer)
 
-@app.route('/api/v1/customers', methods=['GET'])
+@app.route('/api/v1/customer/all', methods=['GET'])
 def get_customers():
     return jsonify(data=customerService.get_all())
 
