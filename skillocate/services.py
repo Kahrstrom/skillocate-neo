@@ -2,6 +2,7 @@ from .models import User, Project, Customer, Tag
 from py2neo import Graph, authenticate
 from passlib.hash import bcrypt
 import os
+import uuid
 
 url = os.environ.get('GRAPHENEDB_BOLT_URL')
 username = os.environ.get('GRAPHENEDB_BOLT_USER')
@@ -16,7 +17,7 @@ class UserService:
         query = """MATCH (n:User)
                    WHERE n.username = '{0}'
                    OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
-                   RETURN n, ID(n) AS id, COLLECT(t) AS tags""".format(username)
+                   RETURN n, COLLECT(t) AS tags""".format(username)
         user = graph.data(query)
 
         if not user:
@@ -36,7 +37,7 @@ class UserService:
             return {"projects" : [serialize(project) for project in projects]}
 
     def register(self, request):
-        print(request.json.get('username',{}))
+
         query = """MATCH (n:User)
                    WHERE n.username = '{0}'
                    RETURN n""".format(request.json.get('username',{}))
@@ -45,10 +46,10 @@ class UserService:
         if not user:
             json = request.json
             json['password'] = bcrypt.encrypt(json.get('password'))
-            print(json)
+
             query = """CREATE (n:User {0})
-                       RETURN n, ID(n) AS id""".format(parse_request(json))
-            print(query)
+                       RETURN n""".format(parse_request(json))
+
             user = graph.data(query)
             return True
         else:
@@ -56,7 +57,7 @@ class UserService:
 
     def verify_password(self, request):
         user = User.select(graph, primary_value = request.json['username']).first()
-        print(user.password)
+
         if user:
             return bcrypt.verify(request.json['password'], user.password)
         else:
@@ -66,14 +67,14 @@ class CustomerService:
     
     def get(self, id):
         query = """MATCH (n:Customer)
-                   WHERE ID(n) = {0}
+                   WHERE n.id = '{0}'
                    OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
                    OPTIONAL MATCH (p:Project) <- [:REQUESTED] - (n)
-                   RETURN n, ID(n) AS id, COLLECT(DISTINCT t) AS tags, COLLECT(DISTINCT p) AS projects
+                   RETURN n, COLLECT(DISTINCT t) AS tags, COLLECT(DISTINCT p) AS projects
                 """.format(id)
         customer = graph.data(query)
 
-        print(customer)
+
         if not customer:
             return None
         else:
@@ -83,23 +84,24 @@ class CustomerService:
         query = """MATCH (n:Customer)
                    OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
                    OPTIONAL MATCH (p:Project) <- [:REQUESTED] - (n)
-                   RETURN n, ID(n) AS id, COLLECT(t) AS tags, COLLECT(DISTINCT p) AS projects"""
+                   RETURN n, COLLECT(t) AS tags, COLLECT(DISTINCT p) AS projects"""
         customers = graph.data(query)
 
         return {"customers" : [serialize(customer, ['tags', 'projects']) for customer in customers]}
 
     def create_project(self, id, request):
         query = """MATCH (c:Customer)
-                   WHERE ID(c) = {0}
+                   WHERE c.id = '{0}'
                    CREATE (n:Project {1}) <- [:REQUESTED] - (c)
-                   RETURN n, ID(n) AS id
-                """.format(id, parse_request(request.json))
+                   RETURN n
+                """.format(id, parse_request(add_id(request.json)))
+
         project = graph.data(query)
         return {"project" : serialize(project[0],[])}
 
     def create(self, request):
         query = """CREATE (n:Customer {0})
-                   RETURN n, ID(n) AS id""".format(parse_request(request.json))
+                   RETURN n""".format(parse_request(add_id(request.json)))
         customer = graph.data(query)
         return {"customer" : serialize(customer[0], ['tags', 'projects'])}
 
@@ -108,28 +110,29 @@ class CustomerService:
 
 class ProjectService:
     def get(self, id):
-        query = ("MATCH (n:Project) "
-                 "WHERE ID(n) = {0} "
-                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n) "
-                 "RETURN n, ID(n) AS id, COLLECT(DISTINCT t) AS tags").format(id)
+        query = """MATCH (n:Project)
+                   WHERE n.id = '{0}'
+                   OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                   RETURN n, COLLECT(DISTINCT t) AS tags").format(id)"""
         project = graph.data(query)
-        print(project)
+
+        
         if not project:
             return None
         else:
             return {"project" : serialize(project[0], ['tags'])}
     
     def get_all(self):
-        query = ("MATCH (n:Project)"
-                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)"
-                 "RETURN n, ID(n) AS id, COLLECT(DISTINCT t) AS tags")
+        query = """MATCH (n:Project)
+                   OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                   RETURN n, COLLECT(DISTINCT t) AS tags"""
         projects = graph.data(query)
 
         return {"projects" : [serialize(project, ['tags','customers']) for project in projects]}
 
     def create(self, id, request):
         query = """CREATE (n:Project {0})
-                   RETURN n, ID(n) AS id""".format(parse_request(request.json))
+                   RETURN n""".format(parse_request(add_id(request.json)))
         project = graph.data(query)
         return {"project" : serialize(project[0], ['tags','customers'])}
     
@@ -138,12 +141,12 @@ class ProjectService:
 
 def set_tags_to_label(id, label, request):
     query = """MATCH (t:Tag) - [rel:TAGGED] -> (n:{0})
-               WHERE ID(n) = {1}
+               WHERE n.id = '{1}'
                DELETE rel""".format(label,id)
     graph.data(query)
 
     query = """MATCH (n:{0})
-               WHERE ID(n) = {1}
+               WHERE n.id = '{1}'
                WITH n\n""".format(label, id)
     
     merges = ["""MERGE (t{0}:Tag {1})
@@ -155,7 +158,7 @@ def set_tags_to_label(id, label, request):
             {1}
             WITH n
             OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
-            RETURN n, ID(n) AS id, COLLECT(DISTINCT t) AS tags
+            RETURN n, COLLECT(DISTINCT t) AS tags
             """.format(query, merges)
 
     node = graph.data(query)
@@ -176,10 +179,7 @@ def serialize_simple(item):
     )
 
 def serialize(node, relations):
-    data = merge_two_dicts(
-        node['n'],
-        {"id": node['id']}
-    )
+    data = node['n']
     for relation in relations:
         data = merge_two_dicts(
             data,
@@ -192,3 +192,7 @@ def merge_two_dicts(x, y):
     z = x.copy()
     z.update(y)
     return z
+
+def add_id(json):
+    id = str(uuid.uuid4())[:8]
+    return merge_two_dicts(json, {'id' : id})
