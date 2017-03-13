@@ -24,17 +24,43 @@ class UserService:
             return None
         else:
             return {"user" : serialize(user[0], ['tags'])}
-    
+
+    def get_complete(self, username):
+        query = """MATCH (n:User)
+                   WHERE n.username = '{0}'
+                   OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                   OPTIONAL MATCH (p:Project) <- [:ASSIGNED] - (n)
+                   OPTIONAL MATCH (e:Education) <- [:ATTENDED] - (n)
+                   RETURN n, COLLECT(t) AS tags, COLLECT(DISTINCT p) AS projects,
+                   COLLECT(DISTINCT e) AS educations""".format(username)
+        user = graph.data(query)
+
+        if not user:
+            return None
+        else:
+            return {"user" : serialize(user[0], ['tags', 'projects', 'educations'])}
+
     def get_projects(self, username):
         query = """MATCH (n:User {username: {0}})
                    MATCH (p:Projects) - [:TAGGED] -> (n)
-                   RETURN COLLECT(p) AS projects""".format(username)
+                   RETURN COLLECT(DISTINCT p) AS projects""".format(username)
         projects = graph.data(query)
 
         if not user:
             return None
         else:
             return {"projects" : [serialize(project) for project in projects]}
+
+    def get_educations(self, username):
+        query = """MATCH (n:User {username: {0}})
+                   MATCH (p:Education) <- [:ATTENDED] - (n)
+                   RETURN COLLECT(DISTINCT e) AS educations""".format(username)
+        educations = graph.data(query)
+
+        if not user:
+            return None
+        else:
+            return {"educations" : [serialize(education) for education in educations]}
 
     def register(self, request):
 
@@ -63,8 +89,31 @@ class UserService:
         else:
             return False
 
-class CustomerService:
+    def assign_project(self, username, id):
+        query = """MATCH (u:User), (p:Project)
+                   WHERE u.username = '{0}'AND p.id = '{1}'
+                   CREATE (u) - [:ASSIGNED] -> (p)
+                   RETURN p """.format(username, id)
+        
+        project = graph.data(query)
+        if not project:
+            return False
+        else:
+            return True
+
+    def create_education(self, username, request):
+        query = """MATCH (u:User)
+                   WHERE u.username = '{0}'
+                   CREATE (n:Education {1}) <- [:ATTENDED] - (u)
+                   RETURN n
+                """.format(username, parse_request(add_id(request.json)))
+
+        education = graph.data(query)
+        return {"education" : serialize(education[0],[])}
+
     
+
+class CustomerService:    
     def get(self, id):
         query = """MATCH (n:Customer)
                    WHERE n.id = '{0}'
@@ -73,7 +122,6 @@ class CustomerService:
                    RETURN n, COLLECT(DISTINCT t) AS tags, COLLECT(DISTINCT p) AS projects
                 """.format(id)
         customer = graph.data(query)
-
 
         if not customer:
             return None
@@ -128,16 +176,46 @@ class ProjectService:
                    RETURN n, COLLECT(DISTINCT t) AS tags"""
         projects = graph.data(query)
 
-        return {"projects" : [serialize(project, ['tags','customers']) for project in projects]}
+        return {"projects" : [serialize(project, ['tags']) for project in projects]}
 
     def create(self, id, request):
         query = """CREATE (n:Project {0})
                    RETURN n""".format(parse_request(add_id(request.json)))
         project = graph.data(query)
-        return {"project" : serialize(project[0], ['tags','customers'])}
+        return {"project" : serialize(project[0], ['tags'])}
     
     def set_tags(self, id, request):
         return set_tags_to_label(id, "Project", request.json)
+
+class EducationService:
+    def get(self, id):
+        query = """MATCH (n:Education)
+                   WHERE n.id = '{0}'
+                   OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                   RETURN n, COLLECT(DISTINCT t) AS tags").format(id)"""
+        education = graph.data(query)
+
+        if not education:
+            return None
+        else:
+            return {"education" : serialize(education[0], ['tags'])}
+    
+    def get_all(self):
+        query = """MATCH (n:Education)
+                   OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                   RETURN n, COLLECT(DISTINCT t) AS tags"""
+        educations = graph.data(query)
+
+        return {"educations" : [serialize(education, ['tags']) for education in educations]}
+
+    def create(self, id, request):
+        query = """CREATE (n:Education {0})
+                   RETURN n""".format(parse_request(add_id(request.json)))
+        education = graph.data(query)
+        return {"education" : serialize(education[0], ['tags'])}
+    
+    def set_tags(self, id, request):
+        return set_tags_to_label(id, "Education", request.json)
 
 def set_tags_to_label(id, label, request):
     query = """MATCH (t:Tag) - [rel:TAGGED] -> (n:{0})
@@ -160,7 +238,7 @@ def set_tags_to_label(id, label, request):
             OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
             RETURN n, COLLECT(DISTINCT t) AS tags
             """.format(query, merges)
-
+            
     node = graph.data(query)
     return {"{0}".format(label).lower() : serialize(node[0],['tags'])}
 

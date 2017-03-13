@@ -1,7 +1,7 @@
 from .errorhandler import InvalidUsage
 from .models import User, Project, Customer, Tag
 from flask import Flask, request, session, redirect, jsonify, abort
-from .services import CustomerService, ProjectService, UserService, graph
+from .services import CustomerService, ProjectService, UserService, EducationService, graph
 
 # Initialize app...
 app = Flask(__name__)
@@ -10,10 +10,11 @@ app = Flask(__name__)
 customerService = CustomerService()
 projectService = ProjectService()
 userService = UserService()
+educationService = EducationService()
 
 @app.route('/api/v1/hello')
 def hello():
-    query = "MATCH (node)<-[r]-(related) RETURN node, TYPE(r) AS relation, related"
+    query = "MATCH (node)<-[r]-(related) RETURN node, COLLECT(DISTINCT related) as relations"
     return jsonify(data=graph.data(query))
 
 @app.errorhandler(InvalidUsage)
@@ -40,7 +41,7 @@ def login_user():
 
 @app.route('/api/v1/user/<username>', methods=['GET'])
 def get_user(username):
-    user = userService.get(username)
+    user = userService.get_complete(username)
     if user:
         return jsonify(data=user)
     else:
@@ -55,9 +56,26 @@ def get_user_projects(username):
     else:
         raise InvalidUsage('No such user', status_code=404)
 
+@app.route('/api/v1/user/<username>/education', methods=['GET'])
+def get_user_educations(username):
+    educations = userService.get_educations(username)
+
+    if educations:
+        return jsonify(data=educations)
+    else:
+        raise InvalidUsage('No such user', status_code=404)
+
 @app.route('/api/v1/user/<username>/project/<id>', methods=['POST'])
-def assign_user_project(username, id):
-    raise InvalidUsage('Not yet implemented', status_code=501)
+def assign_project(username,id):
+    return jsonify(data=userService.assign_project(username, id))
+
+@app.route('/api/v1/user/<username>/education', methods=['POST'])
+def add_user_education(username):
+    education = userService.create_education(username, request)
+    if education:
+        return jsonify(data=education)
+    else:
+        raise InvalidUsage('No such user', status_code=404)
 
 @app.route('/api/v1/customer', methods=['POST'])
 def create_customer():
@@ -94,6 +112,10 @@ def tag_project(id):
 @app.route('/api/v1/customer/<id>/tag', methods=['POST'])
 def tag_customer(id):
     return jsonify(data=customerService.set_tags(id=id, request=request))
+
+@app.route('/api/v1/education/<id>/tag', methods=['POST'])
+def tag_education(id):
+    return jsonify(data=educationService.set_tags(id=id, request=request))
 
 @app.route('/api/v1/customer/<id>/project', methods=['POST'])
 def request_project(id):
