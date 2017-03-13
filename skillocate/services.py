@@ -109,8 +109,8 @@ class CustomerService:
 class ProjectService:
     def get(self, id):
         query = ("MATCH (n:Project) "
-                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n) "
                  "WHERE ID(n) = {0} "
+                 "OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n) "
                  "RETURN n, ID(n) AS id, COLLECT(DISTINCT t) AS tags").format(id)
         project = graph.data(query)
         print(project)
