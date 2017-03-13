@@ -13,7 +13,8 @@ userService = UserService()
 
 @app.route('/api/v1/hello')
 def hello():
-    return jsonify(data="world")
+    query = "MATCH (node)<-[r]-(related) RETURN node, TYPE(r) AS relation, related"
+    return jsonify(data=graph.data(query))
 
 @app.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
@@ -36,7 +37,16 @@ def login_user():
     else:
         raise InvalidUsage('Invalid password', status_code=401)
 
-@app.route('/api/v1/user/<username>/project/all', methods=['GET'])
+
+@app.route('/api/v1/user/<username>', methods=['GET'])
+def get_user(username):
+    user = userService.get(username)
+    if user:
+        return jsonify(data=user)
+    else:
+        raise InvalidUsage('No such user', status_code=401)
+
+@app.route('/api/v1/user/<username>/project', methods=['GET'])
 def get_user_projects(username):
     projects = userService.get_projects(username)
 
@@ -61,7 +71,7 @@ def get_customer(id):
     else:
         return jsonify(data=customer)
 
-@app.route('/api/v1/customer/all', methods=['GET'])
+@app.route('/api/v1/customer', methods=['GET'])
 def get_customers():
     return jsonify(data=customerService.get_all())
 
@@ -79,8 +89,12 @@ def get_project(id):
 
 @app.route('/api/v1/project/<id>/tag', methods=['POST'])
 def tag_project(id):
-    return jsonify(data=projectService.add_tags(id=id, request=request))
+    return jsonify(data=projectService.set_tags(id=id, request=request))
 
 @app.route('/api/v1/customer/<id>/tag', methods=['POST'])
 def tag_customer(id):
-    return jsonify(data=customerService.add_tags(id=id, request=request))
+    return jsonify(data=customerService.set_tags(id=id, request=request))
+
+@app.route('/api/v1/customer/<id>/project', methods=['POST'])
+def request_project(id):
+    return jsonify(data=customerService.create_project(id, request))
