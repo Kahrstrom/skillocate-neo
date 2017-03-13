@@ -82,7 +82,8 @@ class CustomerService:
     def get_all(self):
         query = """MATCH (n:Customer)
                    OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
-                   RETURN n, ID(n) AS id, COLLECT(t) AS tags"""
+                   OPTIONAL MATCH (p:Project) <- [:REQUESTED] - (n)
+                   RETURN n, ID(n) AS id, COLLECT(t) AS tags, COLLECT(DISTINCT p) AS projects"""
         customers = graph.data(query)
 
         return {"customers" : [serialize(customer, ['tags', 'projects']) for customer in customers]}
