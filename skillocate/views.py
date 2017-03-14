@@ -28,6 +28,8 @@ def handle_invalid_usage(error):
     response.status_code = error.status_code
     return response
 
+###  USER  ###
+
 # Registers a new user
 @app.route('/api/v1/user/register', methods=['POST'])
 def register_user():
@@ -118,6 +120,15 @@ def add_user_education(username):
     else:
         raise InvalidUsage('No such user', status_code=404)
 
+##############################################################
+###########################  /USER  ###########################
+###############################################################
+
+
+###############################################################
+########################  EDUCATION  ##########################
+###############################################################
+
 # Gets data from a specific education
 @app.route('/api/v1/education/<id>', methods=['GET'])
 def get_education(id):
@@ -137,6 +148,22 @@ def update_education(id):
 @app.route('/api/v1/education/<id>', methods=['DELETE'])
 def delete_education(id):
     raise InvalidUsage('Not yet implemented', status_code=501)
+
+
+# Sets tags for a specific education. Replaces all current tags.
+@app.route('/api/v1/education/<id>/tag', methods=['POST'])
+def tag_education(id):
+    return jsonify(data=educationService.set_tags(id=id, request=request))
+
+###############################################################
+########################  /EDUCATION  #########################
+###############################################################
+
+
+
+###############################################################
+######################  WORKEXPERIENCE  #######################
+###############################################################
 
 # Gets data from a specific workexperience
 @app.route('/api/v1/workexperience/<id>', methods=['GET'])
@@ -158,6 +185,21 @@ def update_workexperience(id):
 def delete_workexperience(id):
     raise InvalidUsage('Not yet implemented', status_code=501)
 
+# Sets tags for a specific workexperience. Replaces all current tags.
+@app.route('/api/v1/workexperience/<id>/tag', methods=['POST'])
+def tag_workexperience(id):
+    raise InvalidUsage('Not yet implemented', status_code=501)
+
+###############################################################
+######################  /WORKEXPERIENCE  ######################
+###############################################################
+
+
+
+###############################################################
+######################## CERTIFICATE  #########################
+###############################################################
+
 # Gets data from a specific certificate
 @app.route('/api/v1/certificate/<id>', methods=['GET'])
 def get_certificate(id):
@@ -177,6 +219,22 @@ def update_certificate(id):
 @app.route('/api/v1/certificate/<id>', methods=['DELETE'])
 def delete_certificate(id):
     raise InvalidUsage('Not yet implemented', status_code=501)
+
+# Sets tags for a specific certificate. Replaces all current tags.
+@app.route('/api/v1/certificate/<id>/tag', methods=['POST'])
+def tag_certificate(id):
+    raise InvalidUsage('Not yet implemented', status_code=501)
+
+###############################################################
+######################## /CERTIFICATE  ########################
+###############################################################
+
+
+
+
+###############################################################
+########################## CUSTOMER  ##########################
+###############################################################
 
 # Creates a customer
 @app.route('/api/v1/customer', methods=['POST'])
@@ -207,6 +265,22 @@ def get_customers():
 def request_project(id):
     return jsonify(data=customerService.create_project(id, request))
 
+
+# Sets tags for a specific customer. Replaces all current tags.
+@app.route('/api/v1/customer/<id>/tag', methods=['POST']) 
+def tag_customer(id):
+    return jsonify(data=customerService.set_tags(id=id, request=request))
+
+###############################################################
+######################### /CUSTOMER  ##########################
+###############################################################
+
+
+
+
+###############################################################
+########################### PROJECT  ##########################
+###############################################################
 # REMOVED
 # # Creates a project
 # @app.route('/api/v1/project', methods=['POST'])
@@ -242,25 +316,10 @@ def get_project(id):
 def tag_project(id):
     return jsonify(data=projectService.set_tags(id=id, request=request))
 
-# Sets tags for a specific customer. Replaces all current tags.
-@app.route('/api/v1/customer/<id>/tag', methods=['POST']) 
-def tag_customer(id):
-    return jsonify(data=customerService.set_tags(id=id, request=request))
+###############################################################
+########################## /PROJECT  ##########################
+###############################################################
 
-# Sets tags for a specific education. Replaces all current tags.
-@app.route('/api/v1/education/<id>/tag', methods=['POST'])
-def tag_education(id):
-    return jsonify(data=educationService.set_tags(id=id, request=request))
-
-# Sets tags for a specific workexperience. Replaces all current tags.
-@app.route('/api/v1/workexperience/<id>/tag', methods=['POST'])
-def tag_workexperience(id):
-    raise InvalidUsage('Not yet implemented', status_code=501)
-
-# Sets tags for a specific certificate. Replaces all current tags.
-@app.route('/api/v1/certificate/<id>/tag', methods=['POST'])
-def tag_certificate(id):
-    raise InvalidUsage('Not yet implemented', status_code=501)
 
 @app.route('/api/v1/site-map')
 def list_routes():

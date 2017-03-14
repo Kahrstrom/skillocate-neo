@@ -217,6 +217,66 @@ class EducationService:
     def set_tags(self, id, request):
         return set_tags_to_label(id, "Education", request.json)
 
+class WorkExperienceService:
+    def get(self, id):
+        query = """MATCH (n:WorkExperience)
+                   WHERE n.id = '{0}'
+                   OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                   RETURN n, COLLECT(DISTINCT t) AS tags").format(id)"""
+        workexperience = graph.data(query)
+
+        if not workexperience:
+            return None
+        else:
+            return {"workexperience" : serialize(workexperience[0], ['tags'])}
+    
+    def get_all(self):
+        query = """MATCH (n:WorkExperience)
+                   OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                   RETURN n, COLLECT(DISTINCT t) AS tags"""
+        workexperience = graph.data(query)
+
+        return {"workexperience" : [serialize(workexperience, ['tags']) for workexperience in workexperience]}
+
+    def create(self, id, request):
+        query = """CREATE (n:WorkExperience {0})
+                   RETURN n""".format(parse_request(add_id(request.json)))
+        workexperience = graph.data(query)
+        return {"workexperience" : serialize(workexperience[0], ['tags'])}
+    
+    def set_tags(self, id, request):
+        return set_tags_to_label(id, "WorkExperience", request.json)
+
+class CertificateService:
+    def get(self, id):
+        query = """MATCH (n:Certificate)
+                   WHERE n.id = '{0}'
+                   OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                   RETURN n, COLLECT(DISTINCT t) AS tags").format(id)"""
+        certificate = graph.data(query)
+
+        if not certificate:
+            return None
+        else:
+            return {"certificate" : serialize(certificate[0], ['tags'])}
+    
+    def get_all(self):
+        query = """MATCH (n:Certificate)
+                   OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                   RETURN n, COLLECT(DISTINCT t) AS tags"""
+        certificate = graph.data(query)
+
+        return {"certificates" : [serialize(certificate, ['tags']) for certificate in certificate]}
+
+    def create(self, id, request):
+        query = """CREATE (n:Certificate {0})
+                   RETURN n""".format(parse_request(add_id(request.json)))
+        certificate = graph.data(query)
+        return {"certificate" : serialize(certificate[0], ['tags'])}
+    
+    def set_tags(self, id, request):
+        return set_tags_to_label(id, "Certificate", request.json)
+
 def set_tags_to_label(id, label, request):
     query = """MATCH (t:Tag) - [rel:TAGGED] -> (n:{0})
                WHERE n.id = '{1}'
