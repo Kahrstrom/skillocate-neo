@@ -111,7 +111,8 @@ class UserService:
         education = graph.data(query)
         return {"education" : serialize(education[0],[])}
 
-    
+    def set_tags(self, username, request):
+        return set_tags_to_label("username", username, "User", request.json)
 
 class CustomerService:    
     def get(self, id):
@@ -154,7 +155,7 @@ class CustomerService:
         return {"customer" : serialize(customer[0], ['tags', 'projects'])}
 
     def set_tags(self, id, request):
-        return set_tags_to_label(id, "Customer", request.json)
+        return set_tags_to_label("id", id, "Customer", request.json)
 
 class ProjectService:
     def get(self, id):
@@ -185,7 +186,7 @@ class ProjectService:
         return {"project" : serialize(project[0], ['tags'])}
     
     def set_tags(self, id, request):
-        return set_tags_to_label(id, "Project", request.json)
+        return set_tags_to_label("id", id, "Project", request.json)
 
 class EducationService:
     def get(self, id):
@@ -215,7 +216,7 @@ class EducationService:
         return {"education" : serialize(education[0], ['tags'])}
     
     def set_tags(self, id, request):
-        return set_tags_to_label(id, "Education", request.json)
+        return set_tags_to_label("id", id, "Education", request.json)
 
 class WorkExperienceService:
     def get(self, id):
@@ -245,7 +246,7 @@ class WorkExperienceService:
         return {"workexperience" : serialize(workexperience[0], ['tags'])}
     
     def set_tags(self, id, request):
-        return set_tags_to_label(id, "WorkExperience", request.json)
+        return set_tags_to_label("id", id, "WorkExperience", request.json)
 
 class CertificateService:
     def get(self, id):
@@ -275,17 +276,17 @@ class CertificateService:
         return {"certificate" : serialize(certificate[0], ['tags'])}
     
     def set_tags(self, id, request):
-        return set_tags_to_label(id, "Certificate", request.json)
+        return set_tags_to_label("id", id, "Certificate", request.json)
 
-def set_tags_to_label(id, label, request):
+def set_tags_to_label(idproperty, idvalue, label, request):
     query = """MATCH (t:Tag) - [rel:TAGGED] -> (n:{0})
-               WHERE n.id = '{1}'
-               DELETE rel""".format(label,id)
+               WHERE n.{1} = '{2}'
+               DELETE rel""".format(label, idproperty, idvalue)
     graph.data(query)
 
     query = """MATCH (n:{0})
-               WHERE n.id = '{1}'
-               WITH n\n""".format(label, id)
+               WHERE n.{1} = '{2}'
+               WITH n\n""".format(label, idproperty, idvalue)
     
     merges = ["""MERGE (t{0}:Tag {1})
                  MERGE (t{0}) - [:TAGGED] -> (n)""".format(index, "{name:'" + tag['name'] + "'}") for index, tag in enumerate(request['tags'])]
@@ -298,7 +299,8 @@ def set_tags_to_label(id, label, request):
             OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
             RETURN n, COLLECT(DISTINCT t) AS tags
             """.format(query, merges)
-            
+    
+    print(query)
     node = graph.data(query)
     return {"{0}".format(label).lower() : serialize(node[0],['tags'])}
 

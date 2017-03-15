@@ -120,6 +120,11 @@ def add_user_education(username):
     else:
         raise InvalidUsage('No such user', status_code=404)
 
+# Sets tags for a specific user. Replaces all current tags.
+@app.route('/api/v1/user/<username>/tag', methods=['POST'])
+def tag_user(username):
+    return jsonify(data=userService.set_tags(username=username, request=request))
+
 ##############################################################
 ###########################  /USER  ###########################
 ###############################################################
