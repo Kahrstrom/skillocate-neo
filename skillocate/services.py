@@ -25,6 +25,14 @@ class UserService:
         else:
             return {"user" : serialize(user[0], ['tags'])}
 
+    def get_all(self):
+        query = """MATCH (n:User)
+                   OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
+                   RETURN n, COLLECT(t) AS tags"""
+        users = graph.data(query)
+
+        return {"users" : [serialize(user, ['tags']) for user in users]}
+
     def get_complete(self, username):
         query = """MATCH (n:User)
                    WHERE n.username = '{0}'
@@ -41,19 +49,21 @@ class UserService:
             return {"user" : serialize(user[0], ['tags', 'projects', 'educations'])}
 
     def get_projects(self, username):
-        query = """MATCH (n:User {username: {0}})
-                   MATCH (p:Projects) - [:TAGGED] -> (n)
-                   RETURN COLLECT(DISTINCT p) AS projects""".format(username)
+        query = """MATCH (u:User)
+                   WHERE u.username = '{0}' 
+                   MATCH (n:Projects) <- [:ASSIGNED] -> (u)
+                   RETURN n""".format(username)
         projects = graph.data(query)
 
-        if not user:
+        if not projects:
             return None
         else:
             return {"projects" : [serialize(project) for project in projects]}
 
     def get_educations(self, username):
-        query = """MATCH (n:User {username: {0}})
-                   MATCH (p:Education) <- [:ATTENDED] - (n)
+        query = """MATCH (n:User)
+                   WHERE n.username = {0} 
+                   MATCH (e:Education) <- [:ATTENDED] - (n)
                    RETURN COLLECT(DISTINCT e) AS educations""".format(username)
         educations = graph.data(query)
 
@@ -61,6 +71,18 @@ class UserService:
             return None
         else:
             return {"educations" : [serialize(education) for education in educations]}
+
+    def get_certificates(self, username):
+        query = """MATCH (n:User)
+                   WHERE n.username = {0} 
+                   MATCH (c:Certificate) <- [:CERTIFIED] - (n)
+                   RETURN COLLECT(DISTINCT c) AS certificates""".format(username)
+        certificates = graph.data(query)
+
+        if not user:
+            return None
+        else:
+            return {"certificates" : [serialize(certificate) for certificate in certificates]}
 
     def register(self, request):
 
@@ -162,7 +184,7 @@ class ProjectService:
         query = """MATCH (n:Project)
                    WHERE n.id = '{0}'
                    OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
-                   RETURN n, COLLECT(DISTINCT t) AS tags").format(id)"""
+                   RETURN n, COLLECT(DISTINCT t) AS tags""".format(id)
         project = graph.data(query)
 
         
@@ -193,7 +215,7 @@ class EducationService:
         query = """MATCH (n:Education)
                    WHERE n.id = '{0}'
                    OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
-                   RETURN n, COLLECT(DISTINCT t) AS tags").format(id)"""
+                   RETURN n, COLLECT(DISTINCT t) AS tags""".format(id)
         education = graph.data(query)
 
         if not education:
@@ -223,7 +245,7 @@ class WorkExperienceService:
         query = """MATCH (n:WorkExperience)
                    WHERE n.id = '{0}'
                    OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
-                   RETURN n, COLLECT(DISTINCT t) AS tags").format(id)"""
+                   RETURN n, COLLECT(DISTINCT t) AS tags""".format(id)
         workexperience = graph.data(query)
 
         if not workexperience:
@@ -253,7 +275,7 @@ class CertificateService:
         query = """MATCH (n:Certificate)
                    WHERE n.id = '{0}'
                    OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
-                   RETURN n, COLLECT(DISTINCT t) AS tags").format(id)"""
+                   RETURN n, COLLECT(DISTINCT t) AS tags""".format(id)
         certificate = graph.data(query)
 
         if not certificate:
