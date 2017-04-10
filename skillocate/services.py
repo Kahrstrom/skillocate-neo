@@ -155,7 +155,7 @@ class CustomerService:
         query = """MATCH (n:Customer)
                    OPTIONAL MATCH (t:Tag) - [:TAGGED] -> (n)
                    OPTIONAL MATCH (p:Project) <- [:REQUESTED] - (n)
-                   RETURN n, COLLECT(t) AS tags, COLLECT(DISTINCT p) AS projects"""
+                   RETURN n, COLLECT(DISTINCT t) AS tags, COLLECT(DISTINCT p) AS projects"""
         customers = graph.data(query)
 
         return {"customers" : [serialize(customer, ['tags', 'projects']) for customer in customers]}
