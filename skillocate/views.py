@@ -1,6 +1,7 @@
 from .errorhandler import InvalidUsage
 from .models import User, Project, Customer, Tag
 from flask import Flask, request, session, redirect, jsonify, abort, url_for
+from flask_cors import CORS
 from .services import CustomerService, ProjectService, UserService, EducationService, WorkExperienceService, CertificateService, graph
 from urllib.parse import unquote
 import itertools
@@ -8,6 +9,7 @@ from operator import itemgetter
 
 # Initialize app...
 app = Flask(__name__)
+CORS(app)
 
 # Setup services...
 customerService = CustomerService()
