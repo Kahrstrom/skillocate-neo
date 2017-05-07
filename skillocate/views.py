@@ -1,5 +1,4 @@
 from .errorhandler import InvalidUsage
-from .models import User, Project, Customer, Tag
 from flask import Flask, request, session, redirect, jsonify, abort, url_for
 from flask_cors import CORS
 from .services import CustomerService, ProjectService, UserService, EducationService, WorkExperienceService, CertificateService, graph
@@ -42,6 +41,15 @@ def register_user():
     else:
         return jsonify(data='success')
 
+# Updates a user
+@app.route('/api/v1/user/<username>/', methods=['PUT'])
+def update_user(username):
+    user = userService.update(username, request)
+    if user:
+        return jsonify(data=user)
+    else:
+        raise InvalidUsage('No such user', status_code=401)
+
 # Handles a login request
 @app.route('/api/v1/user/login/', methods=['POST'])
 def login_user():
@@ -63,11 +71,6 @@ def get_user(username):
 @app.route('/api/v1/user/', methods=['GET'])
 def get_all_users():
     return jsonify(data=userService.get_all())
-
-# Updates user data
-@app.route('/api/v1/user/<username>/', methods=['PUT'])
-def update_user(username):
-    raise InvalidUsage('Not yet implemented', status_code=501)
 
 # Get all user's projects
 @app.route('/api/v1/user/<username>/project/', methods=['GET'])
