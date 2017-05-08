@@ -80,7 +80,7 @@ class UserService:
 
     def get_educations(self, username):
         query = """MATCH (n:User)
-                   WHERE n.username = {0} 
+                   WHERE n.username = '{0}' 
                    MATCH (e:Education) <- [:ATTENDED] - (n)
                    RETURN COLLECT(DISTINCT e) AS educations""".format(username)
         educations = graph.data(query)
@@ -92,7 +92,7 @@ class UserService:
 
     def get_certificates(self, username):
         query = """MATCH (n:User)
-                   WHERE n.username = {0} 
+                   WHERE n.username = '{0}' 
                    MATCH (c:Certificate) <- [:CERTIFIED] - (n)
                    RETURN COLLECT(DISTINCT c) AS certificates""".format(username)
         certificates = graph.data(query)
