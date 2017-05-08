@@ -85,7 +85,7 @@ class UserService:
                    RETURN COLLECT(DISTINCT e) AS educations""".format(username)
         educations = graph.data(query)
 
-        if not user:
+        if not educations:
             return None
         else:
             return {"educations" : [serialize(education, educationModel.slimRelations, educationModel.properties) for education in educations]}
@@ -97,10 +97,10 @@ class UserService:
                    RETURN COLLECT(DISTINCT c) AS certificates""".format(username)
         certificates = graph.data(query)
 
-        if not user:
+        if not certificates:
             return None
         else:
-            return {"certificates" : [serialize(certificate) for certificate in certificates]}
+            return {"certificates" : [serialize(certificate, [], []) for certificate in certificates]}
 
     def register(self, request):
 
