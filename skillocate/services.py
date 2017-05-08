@@ -79,10 +79,10 @@ class UserService:
             return {"projects" : [serialize(project, projectModel.slimRelations, projectModel.properties) for project in projects]}
 
     def get_educations(self, username):
-        query = """MATCH (n:User)
-                   WHERE n.username = '{0}' 
-                   MATCH (e:Education) <- [:ATTENDED] - (n)
-                   RETURN COLLECT(DISTINCT e) AS educations""".format(username)
+        query = """MATCH (u:User)
+                   WHERE u.username = '{0}' 
+                   MATCH (n:Education) <- [:ATTENDED] - (u)
+                   RETURN COLLECT(DISTINCT n) AS n""".format(username)
         educations = graph.data(query)
 
         if not educations:
